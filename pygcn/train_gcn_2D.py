@@ -102,18 +102,31 @@ def data_AU(path):
             set.append(AU_lst[j][i])
         AU_set_lst.append(set)
     
+    AU_set_lst2=[]
+    for j in range(len(AU_set_lst[0])):
+        ave_AU=0
+        for i in range(len(AU_set_lst)):
+            ave_AU+=AU_set_lst[i][j]
+        ave_AU=ave_AU/len(AU_set_lst)
+        AU_set_lst2.append(ave_AU)
+    AU_set_lst2 = torch.LongTensor(AU_set_lst2)
   
 
     AU_set_lst = torch.LongTensor(AU_set_lst)
     #AU_set_lst = AU_set_lst.to(torch.float32)
-    embedding = torch.nn.Embedding(num_embeddings=18, embedding_dim=40)
 
+    embedding = torch.nn.Embedding(num_embeddings=18, embedding_dim=40)
+    
+
+
+
+    
     #features=embedding(AU_set_lst[0])
     #len(AU_set_lst)==1050  1320
     #print(len(AU_set_lst))
     #features=embedding(AU_set_lst[0])
 
-    features=embedding(AU_set_lst[0])
+    features=embedding(AU_set_lst2)
     print(features.shape)
 
     return features

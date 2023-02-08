@@ -1,17 +1,17 @@
 from __future__ import division
 from __future__ import print_function
 
-
+import os
 import time
 import argparse
 import numpy as np
+import copy
+
 
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
-#from pygcn.adj_matrix import get_all
-#from pygcn.adj_matrix import adj_matrix
 
 from pygcn.utils import load_data, accuracy
 from pygcn.models import GCN
@@ -46,94 +46,99 @@ if args.cuda:
 adj, features, labels, idx_train, idx_val, idx_test = load_data()
 
 from pandas import *
+import pandas
  
 # reading CSV file
-data = read_csv("/Users/mac/Desktop/AUGCN/pygcn/205_2_Northwind_video.csv")
- 
-# converting column data to list
-AU1 = data['AU01_c'].tolist()
-#AU1, AU2, AU4）mouth  AU10, AU12, AU14, AU15, AU17, and AU25
-AU2=data['AU02_c'].tolist()
+# data preparation
+# node matrix-> adj matrix
+def data_AU(path):
+    data = read_csv(path)
+    
+    # converting column data to list
+    AU1 = data['AU01_c'].tolist()
+    #AU1, AU2, AU4）mouth  AU10, AU12, AU14, AU15, AU17, and AU25
+    AU2=data['AU02_c'].tolist()
 
-AU4=data['AU04_c'].tolist()
+    AU4=data['AU04_c'].tolist()
 
-AU10=data['AU10_c'].tolist()
-AU12=data['AU12_c'].tolist()
-AU14=data['AU14_c'].tolist()
+    #
+    AU5=data['AU05_c'].tolist()
+    AU6=data['AU06_c'].tolist()
+    AU7=data['AU07_c'].tolist()
 
-AU15=data['AU15_c'].tolist()
-AU17=data['AU17_c'].tolist()
-AU25=data['AU25_c'].tolist()
-AU_lst=[AU1,AU2,AU4,AU10,AU12,AU14,AU15,AU17,AU25]
-
-
-
+    AU9=data['AU09_c'].tolist()
 
 
-# %%
-lst=[]
-for i in range(9):
-    print(int(AU_lst[i][0]))
-    lst.append(int(AU_lst[i][0]))
+    AU10=data['AU10_c'].tolist()
+    AU12=data['AU12_c'].tolist()
+    AU14=data['AU14_c'].tolist()
 
-# %%
-AU_set_lst=[]
-for i in range(len(AU_lst[0])):
-    set=[]
-    for j in range(len(AU_lst)):
-        set.append(AU_lst[j][i])
-    AU_set_lst.append(set)
+    AU15=data['AU15_c'].tolist()
+    AU17=data['AU17_c'].tolist()
+    AU20=data['AU20_c'].tolist()
+
+
+    AU23=data['AU23_c'].tolist()
     
 
+    AU25=data['AU25_c'].tolist()
+    AU26=data['AU26_c'].tolist()
 
-# %%
-len(AU_set_lst)
-
-# %%
-import torch
-AU_set_lst = torch.LongTensor(AU_set_lst)
-#AU_set_lst = AU_set_lst.to(torch.float32)
-embedding = torch.nn.Embedding(num_embeddings=9, embedding_dim=40)
-
-# %%
-AU_set_lst
-
-# %%
-#features=embedding(AU_set_lst[0])
-#len(AU_set_lst)==1050
-features=embedding(AU_set_lst[0])
-labels=[[100]]*1  #a number between 0-63 (PTSD severity)
+    AU28=data['AU28_c'].tolist()
+    AU45=data['AU45_c'].tolist()
+    AU_lst=[AU1,AU2,AU4,AU5,AU6,AU7,AU9,AU10,AU12,AU14,AU15,AU17,AU20,AU23,AU25,AU26,AU28,AU45]
 
 
+    lst=[]
+    for i in range(18):
+        #print(int(AU_lst[i][0]))
+        lst.append(int(AU_lst[i][0]))
 
-# embedding 9*40
-# AU1, AU2....AU9
-#  40
+    global AU_set_lst
+    AU_set_lst=[]
+    for i in range(len(AU_lst[0])):
+        set=[]
+        for j in range(len(AU_lst)):
+            set.append(AU_lst[j][i])
+        AU_set_lst.append(set)
+    
+  
+
+    AU_set_lst = torch.LongTensor(AU_set_lst)
+    #AU_set_lst = AU_set_lst.to(torch.float32)
+    embedding = torch.nn.Embedding(num_embeddings=18, embedding_dim=40)
+
+    #features=embedding(AU_set_lst[0])
+    #len(AU_set_lst)==1050  1320
+    #print(len(AU_set_lst))
+    #features=embedding(AU_set_lst[0])
+
+    features=embedding(AU_set_lst)
+    #print(features.shape)
+
+    return features
 
 
-#1050 rows of AU features
-#1050 labels
-#where is label for 2014
+#file paths reading
+paths_features=os.listdir('/Users/mac/Desktop/AUGCN/pygcn/Training/csvNorthwind')
+def add_prefix(paths):
+    for i in range(len(paths)):
+        paths[i]='/Users/mac/Desktop/AUGCN/pygcn/Training/csvNorthwind/'+paths[i]
+    return paths
+paths_features=add_prefix(paths_features)
+features=data_AU(paths_features[0])
 
+#labels=[[100]]*1  #PHQ score
+#label setting
+labels=[[100]]*len(AU_set_lst)
 labels = torch.LongTensor(labels)
 labels = labels.to(torch.float32)
-adj2=[0]*9
-adj3=[]
-for i in range(9):
-    adj3.append(adj2)
-adj=torch.FloatTensor(adj3)
 
-
-#10 sets of AU_data: 0,1,1,1,....
-
-
+## adj matrix creation
 def adj_matrix(AU_inc1,AU_inc2,feature):
     cnt1=0
     cnt2=0
     cnt_joint=0
-
-    
-    
 
     for i in range(len(feature)):
         if  feature[i][AU_inc1]==1.0:
@@ -155,38 +160,46 @@ def adj_matrix(AU_inc1,AU_inc2,feature):
         return 0.0
     P12=AU1_AU2_joint_count/AU2_count
     return P12
-"""
-index_pair=[]
-for i in range(9):
-    for j in range(9):
-        index_pair.append([i,j])
-print(index_pair,len(index_pair))
-"""
-def get_all():
+
+def get_all_adj():
     res=[]
 
-    for i in range(9):
-        for j in range(9):
+    for i in range(18):
+        for j in range(18):
             res.append(adj_matrix(i,j,AU_set_lst))
-    import numpy as np                  #导入numpy模块，并重命名为np
+                   #导入numpy模块，并重命名为np
     x = np.array(res)     #x是一维数组 
-    d = x.reshape((9,9))                #将x重塑为2行4列的二维数组
+    d = x.reshape((18,18))                #将x重塑为2行4列的二维数组
     return d
 
-adj=get_all()
 
+adj=get_all_adj()
 adj=torch.FloatTensor(adj)
-print(adj)
+
+
+#3D dimensional adj matrix
+def format_adj(adj):
+    new=[]
+    for i in range(len(AU_set_lst)):
+        new.append(adj)
+    return new
+
+
+adj=format_adj(adj)
+
+
+#index setting
+#idx_train=[0]
+#idx_val=[0]
+idx_train=[]
+for i in range(len(AU_set_lst)):
+    idx_train.append(i)
+idx_val=[]
+for i in range(len(AU_set_lst)):
+    idx_val.append(i)
 
 
 
-
-#adj=adj.long()
-idx_train=[0]
-idx_val=[0]
-
-
-import copy
 #features=copy.deepcopy(features_AU)
 
 # Model and optimizer
@@ -198,20 +211,13 @@ model = GCN(nfeat=features.shape[1],
 optimizer = optim.Adam(model.parameters(),
                        lr=args.lr, weight_decay=args.weight_decay)
 
-#我设置的loss 这个是
+#the loss function I set. MSE
 loss_func = torch.nn.MSELoss()
 
 
 
 
-
-# %% [markdown]
-# # dataset preparation
-
-# %%
-
-
-
+#model training 
 def train(epoch):
     t = time.time()
     model.train()
@@ -259,6 +265,8 @@ def test():
           "loss= {:.4f}".format(loss_test.item()))
 train(50)
 test()
+
+print(features.shape)
 #from torchsummary import summary
 #print(summary(model))
 

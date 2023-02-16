@@ -1,1 +1,2 @@
 pygcn
+pygcn_copy

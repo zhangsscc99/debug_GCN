@@ -5,3 +5,4 @@ from .layers import *
 from .models import *
 from .utils import *
 from .adj_matrix import *
+from .feature_matrix import *

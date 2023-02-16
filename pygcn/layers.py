@@ -6,9 +6,51 @@ from torch.nn.parameter import Parameter
 from torch.nn.modules.module import Module
 
 
+class GraphConvolution(Module):
+    
     
 
+    def __init__(self, in_features, out_features, bias=True):
+        super(GraphConvolution, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = Parameter(torch.FloatTensor(in_features, out_features))
+        if bias:
+            self.bias = Parameter(torch.FloatTensor(out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+        
+    def reset_parameters(self):
+        stdv = 1. / math.sqrt(self.weight.size(1))
+        self.weight.data.uniform_(-stdv, stdv)
+        if self.bias is not None:
+            self.bias.data.uniform_(-stdv, stdv)
+     
+    
+    def forward(self, input, adj):
+        # print(input.shape) 1*40 不知道是什么
+        # print(input)
+        # print(self.weight.shape)
+        # 18*40 40*16
+        # 18*18 18*16 
+        #
+        support = torch.mm(input, self.weight)
+        output = torch.spmm(adj, support)
+        # print(sum(output))
+        # print("here")
+        # print(output)
+        # print(output.shape)
+        # print(self.weight.shape)
+        # 18 * 40-> 18 * 1    18 * 18
+        #18 * 18 | 18 * 1 -> 18 * 1
+        if self.bias is not None:
 
+            return output + self.bias
+        else:
+            return output
+
+    """
 class GraphConvolution(Module):
     
     def __init__(self, in_features, out_features, bias=True):
@@ -28,7 +70,6 @@ class GraphConvolution(Module):
         if self.bias is not None:
             self.bias.data.uniform_(-stdv, stdv)
      
-
     def forward(self, input, adj):
         support = torch.mm(input, self.weight)
         output = torch.spmm(adj, support)
@@ -37,13 +78,25 @@ class GraphConvolution(Module):
         else:
             return output
 
+    def forward(self, input, adj_list):
+        outputs = []
+        for i in range(input.shape[0]):
+            support = torch.mm(input[i], self.weight)
+            output = torch.spmm(adj_list[i], support)
+            if self.bias is not None:
+                outputs.append(output + self.bias)
+            else:
+                outputs.append(output)
+        print(outputs)
+        return torch.stack(outputs, dim=0)
+
     
 
     def __repr__(self):
         return self.__class__.__name__ + ' (' \
                + str(self.in_features) + ' -> ' \
                + str(self.out_features) + ')'
-"""
+
 
 
 class GraphConvolution(Module):
@@ -65,19 +118,6 @@ class GraphConvolution(Module):
         if self.bias is not None:
             self.bias.data.uniform_(-stdv, stdv)
 
-    def forward(self, input, adj):
-        # input: (num_graphs, num_nodes, in_features)
-        # adj: (num_graphs, num_nodes, num_nodes)
-        num_graphs, num_nodes, in_features = input.shape
-        input = input.view(-1, in_features)
-        support = torch.mm(input, self.weight)
-        support = support.view(num_graphs, num_nodes, -1)
-        output = torch.bmm(adj, support)
-        if self.bias is not None:
-            return output + self.bias.view(1, 1, -1).expand_as(output)
-        else:
-            return output
-    
     def forward(self, input, adj_list):
         outputs = []
         for i in range(input.shape[0]):
@@ -94,5 +134,6 @@ class GraphConvolution(Module):
         return self.__class__.__name__ + ' (' \
                + str(self.in_features) + ' -> ' \
                + str(self.out_features) + ')'
+
 """
-               
+
